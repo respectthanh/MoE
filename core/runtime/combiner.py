@@ -45,7 +45,7 @@ def simple_combine(
         # Duyệt theo từng expert để gather vector hóa
         # (vẫn là vòng lặp E, nhưng batch trên các token thuộc expert e)
         # Với E nhỏ (8–64) đây là lựa chọn tốt-nhanh-dễ.
-        unique_e = torch.unique_consecutive(e_ids) if e_ids.is_sorted() else torch.unique(e_ids)
+        unique_e = torch.unique(e_ids)
         for e in unique_e.tolist():
             sel = (e_ids == e)
             if not sel.any():
