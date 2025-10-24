@@ -1,21 +1,21 @@
-import sys
 import torch
 from core.routers.topk import TopKRouter
 from core.layer.moe_layer import MoELayer
+from core.experts.registry import build_experts
 
-class ToyExpert(torch.nn.Module):
-    def __init__(self, h): 
-        super().__init__()
-        self.lin = torch.nn.Linear(h, h, bias=False)
-    def forward(self, x): 
-        return self.lin(x)
+E, K, H = 8, 1, 512
+router = TopKRouter(d_model=H, num_experts=E, k=K, alpha=1e-2, zloss_beta=1e-3)
+experts = build_experts(["swiglu"] * E, d_model=H, d_ff=int(3.2*H), dropout=0.0)
 
-E, K, H = 4, 2, 16
-experts = torch.nn.ModuleList([ToyExpert(H) for _ in range(E)])
-router = TopKRouter(d_model=H, num_experts=E, k=K, alpha=1e-2)
-moe = MoELayer(router, experts, capacity_factor=1.25, drop_tokens=True, batch_first=False)
+moe = MoELayer(router, experts, capacity_factor=1.5, drop_tokens=True, batch_first=False)
 
-T = 32
-x = torch.randn(T, H)
+x = torch.randn(128, H)         # SwiGLU
+expert = SwiGLUExpert(d_model=16, d_ff=51)
+x = torch.randn(32, 16)  # [T=32, H=16]
+y = expert(x)            # [32, 16]
+
+# LoRA
+expert = LoRAExpert(d_model=16, d_ff=51, r=8, alpha=16)
+y = expert(x)            # Same output shape       # T=128
 y, aux = moe(x)
-print(y.shape, aux["dropped_tokens"], list(aux["diagnostics"].keys()))
+print(y.shape, aux["dropped_tokens"])
